@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package greeter;
+option go_package = "github.com/unsuman/greeter/pkg/plugin/proto";
+
+// GreeterService defines the interface for language-specific greeters
+service GreeterService {
+  rpc Hello(Empty) returns (GreetingResponse);
+  rpc GoodMorning(Empty) returns (GreetingResponse);
+  rpc GoodAfternoon(Empty) returns (GreetingResponse);
+  rpc GoodNight(Empty) returns (GreetingResponse);
+  rpc GoodBye(Empty) returns (GreetingResponse);
+}
+
+// Empty request message
+message Empty {}
+
+// GreetingResponse contains the greeting message
+message GreetingResponse {
+  string message = 1;
+}
