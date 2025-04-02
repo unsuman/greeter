@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/unsuman/greeter/pkg/plugin/proto"
 )
@@ -29,7 +30,7 @@ func NewGRPCClient(stdin io.WriteCloser, stdout io.ReadCloser, logger *logrus.En
 	clientConn := newPipeConn(stdin, stdout)
 
 	// Create a gRPC client connection
-	conn, err := grpc.NewClient("pipe",
+	conn, err := grpc.Dial("pipe",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return clientConn, nil
@@ -62,7 +63,6 @@ func (c *GRPCClient) GetGreeting(ctx context.Context, greetingType string) (stri
 	var response *pb.GreetingResponse
 	var err error
 
-	// Set a timeout for the RPC call
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -79,7 +79,7 @@ func (c *GRPCClient) GetGreeting(ctx context.Context, greetingType string) (stri
 		response, err = c.GreeterSvc.GoodBye(ctx, &pb.Empty{})
 	default:
 		c.logger.Errorf("Unknown greeting type: %s", greetingType)
-		return "", ErrUnknownGreetingType
+		return "", status.Errorf(codes.InvalidArgument, "unknown greeting type")
 	}
 
 	if err != nil {
@@ -116,8 +116,3 @@ type pipeAddr struct{}
 
 func (pipeAddr) Network() string { return "pipe" }
 func (pipeAddr) String() string  { return "pipe" }
-
-// Errors
-var (
-	ErrUnknownGreetingType = grpc.Errorf(codes.InvalidArgument, "unknown greeting type")
-)

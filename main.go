@@ -27,14 +27,6 @@ func init() {
 		FullTimestamp: true,
 	})
 
-	// Set log level based on environment variable
-	logLevel := os.Getenv("GREETER_LOG_LEVEL")
-	if logLevel == "debug" {
-		log.SetLevel(logrus.DebugLevel)
-	} else {
-		log.SetLevel(logrus.InfoLevel)
-	}
-
 	// Determine plugins directory
 	// Look for plugins in ${PREFIX}/libexec/greeter/plugins/lang/${PLUGIN_NAME}
 	// For development, we'll use a directory relative to the binary
@@ -109,7 +101,9 @@ func main() {
 
 	fmt.Println(message)
 
-	pluginMgr.CleanupPlugins()
+	if err := pluginMgr.StopPlugin("lang", language); err != nil {
+		log.Errorf("Failed to stop plugin: %v", err)
+	}
 	log.Info("Exiting...")
 }
 

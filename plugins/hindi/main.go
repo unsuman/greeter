@@ -24,27 +24,27 @@ type HindiGreeter struct {
 
 func (g *HindiGreeter) Hello(ctx context.Context, empty *pb.Empty) (*pb.GreetingResponse, error) {
 	log.Println("Received Hello request")
-	return &pb.GreetingResponse{Message: "नमस्ते!"}, nil
+	return &pb.GreetingResponse{Message: "नमस्ते! (Namaste!)"}, nil
 }
 
 func (g *HindiGreeter) GoodMorning(ctx context.Context, empty *pb.Empty) (*pb.GreetingResponse, error) {
 	log.Println("Received GoodMorning request")
-	return &pb.GreetingResponse{Message: "शुभ प्रभात!"}, nil
+	return &pb.GreetingResponse{Message: "शुभ प्रभात! (Shubh Prabhat!)"}, nil
 }
 
 func (g *HindiGreeter) GoodAfternoon(ctx context.Context, empty *pb.Empty) (*pb.GreetingResponse, error) {
 	log.Println("Received GoodAfternoon request")
-	return &pb.GreetingResponse{Message: "शुभ दोपहर!"}, nil
+	return &pb.GreetingResponse{Message: "शुभ दोपहर! (Shubh Dophar)"}, nil
 }
 
 func (g *HindiGreeter) GoodNight(ctx context.Context, empty *pb.Empty) (*pb.GreetingResponse, error) {
 	log.Println("Received GoodNight request")
-	return &pb.GreetingResponse{Message: "शुभ रात्रि!"}, nil
+	return &pb.GreetingResponse{Message: "शुभ रात्रि! (Shubh Ratri!)"}, nil
 }
 
 func (g *HindiGreeter) GoodBye(ctx context.Context, empty *pb.Empty) (*pb.GreetingResponse, error) {
 	log.Println("Received GoodBye request")
-	return &pb.GreetingResponse{Message: "अलविदा!"}, nil
+	return &pb.GreetingResponse{Message: "अलविदा! (Alvida!)"}, nil
 }
 
 // PipeConn implements the net.Conn interface over stdin/stdout
@@ -62,7 +62,7 @@ func (p *PipeConn) Write(b []byte) (n int, err error) {
 }
 
 func (p *PipeConn) Close() error {
-	return nil // We don't actually close stdin/stdout
+	return nil
 }
 
 func (p *PipeConn) LocalAddr() net.Addr {
@@ -175,7 +175,9 @@ func main() {
 
 	go func() {
 		<-sigs
-		server.GracefulStop()
+		log.Println("Received shutdown signal, stopping server...")
+		server.Stop()
+		os.Exit(0)
 	}()
 
 	// Start serving

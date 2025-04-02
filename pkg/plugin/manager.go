@@ -183,14 +183,27 @@ func (pm *PluginManager) StopPlugin(category, name string) error {
 
 	// Close gRPC client
 	if instance.Client != nil {
-		instance.Client.Close()
+		//first close pipes
+		if err := instance.Stdin.Close(); err != nil {
+			pm.logger.Warnf("Failed to close stdin pipe: %v", err)
+		}
+		if err := instance.Stdout.Close(); err != nil {
+			pm.logger.Warnf("Failed to close stdout pipe: %v", err)
+		}
+		//then close client
+		if err := instance.Client.Close(); err != nil {
+			pm.logger.Warnf("Failed to close gRPC client: %v", err)
+		}
+
 	}
+
+	pm.logger.Info("canceling plugin context")
 
 	// Cancel the context to stop the command
 	instance.cancelFunc()
 
-	// Wait a bit for graceful shutdown
 	// Force kill if necessary
+	pm.logger.Info("waiting for plugin to exit")
 	if instance.Command.ProcessState == nil || !instance.Command.ProcessState.Exited() {
 		if err := instance.Command.Process.Kill(); err != nil {
 			pm.logger.Warnf("Failed to kill plugin process: %v", err)
@@ -236,7 +249,18 @@ func (pm *PluginManager) CleanupPlugins() {
 
 		// Close gRPC client
 		if instance.Client != nil {
-			instance.Client.Close()
+			//first close pipes
+			if err := instance.Stdin.Close(); err != nil {
+				pm.logger.Warnf("Failed to close stdin pipe: %v", err)
+			}
+			if err := instance.Stdout.Close(); err != nil {
+				pm.logger.Warnf("Failed to close stdout pipe: %v", err)
+			}
+			//then close client
+			if err := instance.Client.Close(); err != nil {
+				pm.logger.Warnf("Failed to close gRPC client: %v", err)
+			}
+
 		}
 
 		// Cancel the context to stop the command
