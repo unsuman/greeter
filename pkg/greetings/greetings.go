@@ -8,3 +8,10 @@ type Greeter interface {
 	GoodNight() string
 	GoodBye() string
 }
+
+type Plugin interface {
+	Greeter
+	Name() string
+	Init() error
+	Close() error
+}
