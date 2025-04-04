@@ -1,14 +1,29 @@
-all: clean build
+# Default: build English-only version and all plugins
+all: clean build-english build-plugins build-all
 
-build: build-main build-hindi build-japanese
+# Build with English only
+build-english: build-plugins
+	go build -o bin/greeter cmd/greeter/main.go
 
-build-main:
-	go build -o greeter main.go
+# Build with all languages
+build-all:
+	go build -o bin/greeter-all cmd/greeter-all/main.go
 
-build-hindi:
-	go build -o plugins/lang/hindi plugins/hindi/main.go
+# Build external plugins
+build-plugins: build-plugin-hindi build-plugin-japanese
 
-build-japanese:
-	go build -o plugins/lang/japanese plugins/japanese/main.go
+# Build Hindi plugin
+build-plugin-hindi:
+	@mkdir -p bin/lang	
+	go build -o bin/lang/hindi plugins/hindi/main.go
 
-.PHONY: all build clean build-main build-hindi build-japanese
+# Build Japanese plugin
+build-plugin-japanese:
+	@mkdir -p bin/lang
+	go build -o bin/lang/japanese plugins/japanese/main.go
+
+# Clean build artifacts
+clean:
+	rm -rf bin/
+
+.PHONY: all clean build-english build-hindi build-japanese build-all build-plugins

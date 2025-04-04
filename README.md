@@ -1,29 +1,43 @@
 # Greeter - A Multilingual Greeting Application
 
-Greeter is a command-line application that provides greetings in multiple languages through a plugin-based architecture. It includes a built-in English language implementation and supports additional languages via external plugins.
+Greeter is a command-line application that provides greetings in multiple languages through a plugin-based architecture. It has a plugin architecture that allows languages to be either:
+- Built-in (embedded) directly into the main application
+- External as separate programs that can be loaded on demand
 
-![](assets/example.gif)
+This design is similar to how database drivers work in Go or how [containerd's fuse-overlayfs](https://github.com/containerd/fuse-overlayfs-snapshotter/?tab=readme-ov-file#setup) works, giving users flexibility in how they deploy and use the application.
+
+![](assets/demo.gif)
 
 ## Overview
 
 The Greeter application allows users to get greetings like "hello", "good morning", etc. in different languages. It has a modular architecture with:
 
 - A core application that handles user input and manages plugins
-- A built-in English language module
-- Support for additional languages via plugins (currently includes Hindi & Japanese)
+- Support for languages through in-process or separate process plugins
 - A plugin system based on gRPC for inter-process communication
+
+## How It Works
+When a user requests a greeting in a specific language:
+
+- The system first checks if the language is available as an embedded plugin
+- If not found, it attempts to load and start an external plugin process
+- It then forwards the greeting request to whichever implementation was found
+- The result is displayed to the user with nice formatting
+- This architecture allows for a clean separation between the core application and language implementations while providing flexibility in deployment.
 
 ## Architecture
 <img alt="Plugin" src="/assets/plugin.png">
 
-- The main application (greeter) processes user commands and routes them to either the built-in languages or plugins
-- The Plugin Manager handles discovery, launching, and communication with language plugins
-- Plugins are separate executables that implement the GreeterService gRPC interface
-- Communication between the main app and plugins is done via stdin/stdout pipes and gRPC
+The system follows a pattern similar to Go's database drivers:
+
+- Core Interface: All language implementations adhere to a common plugin interface
+- Registry: A central registry manages embedded language plugins
+- Plugin Manager: Handles discovery, launching, and communication with external plugins
+- Unified Codebase: Same language implementations work for both embedded and external plugins
 
 ## Plugin Communication
 
-Plugins communicate with the main application using gRPC over stdin/stdout. The protocol is defined in greeter.proto.
+External plugins communicate with the main application using gRPC over stdin/stdout. The protocol is defined in greeter.proto.
 
 When a plugin starts, it:
 1. Initializes the gRPC server
@@ -36,7 +50,7 @@ When a plugin starts, it:
 ### Prerequisites
 
 - Go 1.23 or later
-- Make (optional, for using the Makefile)
+- Make
 
 ### Build Instructions
 
@@ -46,89 +60,60 @@ When a plugin starts, it:
    cd greeter
    ```
 
-2. Build the project:
+2. Build the project using `Make`:
    ```bash
-   # Using Make
-   make
+   make all # Builds all the binaries(main + plugins)
+   
+   make build-english # Builds with English(embedded) only, others as external plugins
+   make build-all # Embeds all the languages(No plugins required)
 
-   # Or using Go directly
-   go build -o greeter main.go
-   go build -o plugins/lang/hindi plugins/hindi/main.go
    ```
-
-## Installation
-
-After building, you can place the binaries in some directory or keep them in a development directory:
-
-```
-./greeter                     # Main executable
-./plugins/lang/hindi          # Hindi plugin
-```
-
-## Configuration
-
-### Environment Variables
-Set `GREETER_PLUGIN_PATH` to the plugins binary directory.
 
 ## Usage
 
 ### Basic Commands
 
 ```bash
-# Get a greeting in English (default)
-greeter hello
+# Get a greeting in English (default, built-in)
+./bin/greeter hello
 
-# Get a greeting in Hindi
-greeter hello --lang=hindi
+# Get a greeting in Hindi(plugin)
+./bin/greeter hello --lang=hindi
 
-# Get a greeting in Japanese
-greeter hello --lang=japanese
+# Get a greeting in Japanese(plugin)
+./bin/greeter hello --lang=japanese
 
 # List available languages
-greeter list-languages
+./bin/greeter list-languages
 
-# Shutdown a running plugin
-greeter shutdown-plugin --lang=hindi
+# Get a greeting in English(default), Hindi, Japanese(built-in)
+./bin/greeter-all hello # For English
+./bin/greeter-all hello --lang=hindi # For Hindi
+./bin/greeter-all hello --lang=japanese # For Japanese
 
 # Get other greetings
-greeter goodmorning [--lang=language]
-greeter goodafternoon [--lang=language]
-greeter goodnight [--lang=language]
-greeter goodbye [--lang=language]
+./bin/greeter goodmorning [--lang=language]
+./bin/greeter goodafternoon [--lang=language]
+./bin/greeter goodnight [--lang=language]
+./bin/greeter goodbye [--lang=language]
 ```
-
-## Plugin Management
-
-The greeter application intelligently manages plugins:
-
-1. **Plugin Persistence**: When you use a language plugin, it remains running in the background for future use.
-2. **Plugin Reuse**: If a plugin is already running, the application connects to the existing process instead of starting a new one.
-3. **Explicit Shutdown**: You can shut down a running plugin with the `shutdown-plugin` command.
-
-This approach provides several benefits:
-- Faster response times for repeated commands
-- Lower resource usage
-- Ability to manage plugin lifecycle when needed
 
 ## Current Limitations
 
-1. **No Cross-User Plugin Sharing**: Plugins started by one user can't be used by another.
-2. **Limited Plugin Discovery**: The system can only detect plugins started by the same application instance.
-3. **Basic Error Handling**: Error handling is minimal, especially for plugin communication failures.
-4. **Limited Configuration**: Plugin parameters cannot be configured without modifying the source code.
-5. **No Automatic Plugin Cleanup**: Plugins must be explicitly shut down, or they'll remain running until the system is restarted.
+1. **Basic Error Handling**: Error handling is minimal, especially for plugin communication failures.
+2. **Limited Configuration**: Plugin parameters cannot be configured without modifying the source code.
+3. **No Plugin Persistence**: When you use a language plugin, it stops when the main program ends.
 
 ## Adding New Language Plugins
 
 To create a new language plugin:
 
-1. Create a new directory in plugins (e.g., `plugins/french/`)
-2. Implement the GreeterService interface (see main.go as an example)
-3. Build the plugin and place it in the appropriate location (`plugins/lang/french`)
+- Create a new language implementation in `plugins/[language]/pkg/`
+- Implement the Plugin interface
+- Add auto-registration code
+- Create an external plugin main file
+- Update the build system to include your language
 
-The minimal implementation needs:
-- A gRPC server that implements the GreeterService
-- Functions for each greeting type (Hello, GoodMorning, etc.)
-- Proper handling of stdin/stdout for communication with the main app
+
 
 
